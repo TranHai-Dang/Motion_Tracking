@@ -2,8 +2,8 @@ import streamlit as st
 import mediapipe as mp
 import cv2
 import numpy as np
-import av  # Thư viện xử lý video quan trọng
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
+import av
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration, WebRtcMode
 
 # --- 1. IMPORT CÁC BÀI TẬP ---
 try:
@@ -17,7 +17,7 @@ except ImportError as e:
     st.error(f"❌ Lỗi Import: {e}. Hãy kiểm tra lại cấu trúc thư mục.")
     st.stop()
 
-# --- 2. DỮ LIỆU HƯỚNG DẪN (Chuẩn hóa) ---
+# --- 2. DỮ LIỆU HƯỚNG DẪN ---
 GUIDE_VIETNAMESE = {
     "Jumping Jack": """
 **🔥 Cách thực hiện:**
@@ -73,7 +73,7 @@ GUIDE_VIETNAMESE = {
     """
 }
 
-# --- 3. CLASS XỬ LÝ HÌNH ẢNH (DÙNG CHUẨN MỚI 'recv') ---
+# --- 3. CLASS XỬ LÝ HÌNH ẢNH ---
 class PoseProcessor(VideoProcessorBase):
     def __init__(self):
         self.mp_pose = mp.solutions.pose
@@ -88,7 +88,6 @@ class PoseProcessor(VideoProcessorBase):
             self.exercise = exercise_class()
             self.exercise.reset()
 
-    # QUAN TRỌNG: Đổi tên hàm từ 'transform' thành 'recv' để Streamlit đời mới hiểu được
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         img = frame.to_ndarray(format="bgr24")
 
@@ -110,7 +109,6 @@ class PoseProcessor(VideoProcessorBase):
         info_text = "San sang..."
         status_color = (255, 255, 255)
 
-        # Vẽ khung xương và tính toán
         if results.pose_landmarks and self.exercise:
             try:
                 angle, count, feedback, stage = self.exercise.process(results.pose_landmarks.landmark)
@@ -125,33 +123,26 @@ class PoseProcessor(VideoProcessorBase):
             except Exception as e:
                 info_text = f"Loi: {e}"
 
-        # 3. Vẽ bảng thông báo (To và Rõ hơn)
-        # Vẽ nền đen cho chữ dễ đọc
-        cv2.rectangle(img, (0,0), (img.shape[1], 80), (245, 117, 16), -1) 
-        # Chỉnh font chữ to hơn (Scale 1.0)
+        # 3. Vẽ bảng thông báo
+        cv2.rectangle(img, (0,0), (img.shape[1], 80), (245, 117, 16), -1)
         cv2.putText(img, info_text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, status_color, 2, cv2.LINE_AA)
         
-        # Trả về video frame chuẩn av
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 # --- 4. GIAO DIỆN CHÍNH ---
 def main():
     st.set_page_config(page_title="Virtual Rehab AI", layout="wide")
     
-    # --- CSS SỬA LỖI CAM BÉ VÀ TỐI ƯU HIỂN THỊ ---
     st.markdown(
         """
         <style>
-        /* Ép video chiếm hết chiều rộng cột */
         video {
             width: 100% !important;
             border-radius: 10px;
         }
-        /* Chỉnh lại khung chứa video */
         div.stWebrtc {
             width: 100% !important;
         }
-        /* Ẩn bớt padding thừa của Streamlit để màn hình rộng hơn */
         .block-container {
             padding-top: 2rem;
             padding-bottom: 2rem;
@@ -206,13 +197,12 @@ def main():
     with col2:
         st.subheader("🎥 Màn hình AI")
         
-        # Cấu hình WebRTC (Thêm RTCConfiguration để ổn định kết nối)
         rtc_configuration = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
         
         ctx = webrtc_streamer(
             key="rehab-cam",
             video_processor_factory=PoseProcessor,
-            mode="sendrecv", # Chế độ gửi video đi và nhận video về (Quan trọng)
+            mode=WebRtcMode.SENDRECV, # <--- QUAN TRỌNG: Sửa thành Enum thay vì string
             rtc_configuration=rtc_configuration,
             media_stream_constraints={"video": True, "audio": False},
             async_processing=True,
