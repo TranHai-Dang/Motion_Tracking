@@ -1,0 +1,20 @@
+# --- Python Bytecode (File rác khi chạy code) ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Môi trường ảo (Virtual Environment) ---
+venv/
+env/
+.venv/
+.env
+
+# --- VS Code & Editor (Cấu hình cá nhân) ---
+.vscode/
+.idea/
+*.swp
+
+# --- Hệ điều hành ---
+.DS_Store
+Thumbs.db
