@@ -13,7 +13,7 @@
 * **🤖 AI Thông Minh:**
     * Tự động đếm số lần tập (Rep counter).
     * **Chống đếm ảo (Anti-Ghost Rep):** Chỉ đếm khi thực hiện đúng biên độ (xuống sâu/lên thẳng).
-    * Cảnh báo sai tư thế bằng giọng nói/văn bản (VD: "Hạ thấp hông xuống", "Đừng võng lưng").
+    * Cảnh báo sai tư thế bằng văn bản (VD: "Hạ thấp hông xuống", "Đừng võng lưng").
 * **🇻🇳 Giao diện thân thiện:**
     * Hướng dẫn chi tiết từng bài tập bằng **Tiếng Việt**.
     * Tự động hiển thị hướng dẫn khi chọn bài.
