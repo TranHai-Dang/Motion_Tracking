@@ -3,7 +3,6 @@ import mediapipe as mp
 import cv2
 import numpy as np
 import av
-import time
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration, WebRtcMode
 
 # --- 1. IMPORT CÁC BÀI TẬP ---
@@ -28,7 +27,7 @@ GUIDE_VIETNAMESE = {
     "High Knees": "1. Chạy tại chỗ.\n\n2. Nâng đùi cao vuông góc với thân người.\n\n3. Đánh tay mạnh theo nhịp.\n\n👉 *Mẹo: Cố gắng nâng đùi càng cao càng tốt.*"
 }
 
-# --- 3. CLASS XỬ LÝ AI (Nâng cấp: Có trí nhớ) ---
+# --- 3. CLASS XỬ LÝ AI ---
 class PoseProcessor(VideoProcessorBase):
     def __init__(self):
         self.mp_pose = mp.solutions.pose
@@ -38,15 +37,14 @@ class PoseProcessor(VideoProcessorBase):
         self.flip = True  
         self.rotate_type = "Không xoay"
         
-        # --- BIẾN LƯU TRỮ LỊCH SỬ TẬP ---
+        # Lưu lịch sử
         self.total_reps = 0
-        self.error_log = [] # Lưu danh sách lỗi (VD: ["Lưng cong", "Chưa xuống sâu"])
+        self.error_log = [] 
 
     def set_exercise(self, exercise_class):
         if exercise_class:
             self.exercise = exercise_class()
             self.exercise.reset()
-            # Reset lịch sử khi đổi bài
             self.total_reps = 0
             self.error_log = []
 
@@ -71,7 +69,10 @@ class PoseProcessor(VideoProcessorBase):
             
             status_color = (0, 165, 255) # Cam
             info_text = "AI Ready..."
-
+            
+            # Khung thông tin trên video
+            h, w, _ = img.shape
+            
             if results.pose_landmarks:
                 self.mp_drawing.draw_landmarks(img, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
                 
@@ -79,12 +80,9 @@ class PoseProcessor(VideoProcessorBase):
                     try:
                         angle, count, feedback, stage = self.exercise.process(results.pose_landmarks.landmark)
                         
-                        # Cập nhật Reps
+                        # Cập nhật Reps & Log
                         self.total_reps = count
-                        
-                        # Ghi nhớ lỗi (Nếu feedback không phải "Good" và chưa có trong log gần nhất)
                         if feedback and "Good" not in feedback and "Tot" not in feedback and "Start" not in feedback:
-                             # Chỉ lưu lỗi nếu nó không bị trùng lặp liên tục (tránh spam)
                             if not self.error_log or self.error_log[-1] != feedback:
                                 self.error_log.append(feedback)
 
@@ -96,9 +94,14 @@ class PoseProcessor(VideoProcessorBase):
                     except:
                         pass
             
-            # 3. Vẽ thông báo
-            cv2.rectangle(img, (0,0), (img.shape[1], 60), (50, 50, 50), -1)
-            cv2.putText(img, info_text, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2, cv2.LINE_AA)
+            # 3. Vẽ bảng thông báo TO VÀ RÕ
+            # Vẽ nền bán trong suốt ở trên cùng
+            overlay = img.copy()
+            cv2.rectangle(overlay, (0,0), (w, 80), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.6, img, 0.4, 0, img)
+            
+            # Vẽ chữ
+            cv2.putText(img, info_text, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, status_color, 2, cv2.LINE_AA)
 
             return av.VideoFrame.from_ndarray(img, format="bgr24")
         
@@ -110,14 +113,11 @@ class PoseProcessor(VideoProcessorBase):
 def main():
     st.set_page_config(page_title="Virtual Rehab AI", layout="wide")
     
-    # CSS Full màn hình
     st.markdown(
         """
         <style>
         .block-container { padding-top: 1rem; padding-bottom: 1rem; }
-        video { width: 100% !important; height: auto !important; border-radius: 10px; }
-        div[class*="stWebrtc"] { width: 100% !important; }
-        div[class*="stWebrtc"] > div { width: 100% !important; }
+        video { width: 100% !important; border-radius: 10px; }
         </style>
         """,
         unsafe_allow_html=True
@@ -161,65 +161,63 @@ def main():
     
     rtc_config = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
 
-    # Cấu hình để lưu video
-    # media_stream_recorder=True giúp hiện nút "Record" trên video
     ctx = webrtc_streamer(
         key="rehab-cam",
         video_processor_factory=PoseProcessor,
         mode=WebRtcMode.SENDRECV,
         rtc_configuration=rtc_config,
         media_stream_constraints={"video": True, "audio": False},
-        async_processing=False
+        async_processing=False 
     )
 
-    # Xử lý thông số gửi vào AI
     if ctx.video_processor:
         ctx.video_processor.set_exercise(current_exercise)
         ctx.video_processor.flip = flip
         ctx.video_processor.rotate_type = rotate
 
-    # --- PHẦN BÁO CÁO KẾT QUẢ (REPORT) ---
-    # Khi người dùng tắt camera hoặc dừng tập, hiển thị kết quả
-    if not ctx.state.playing and ctx.video_processor:
-        processor = ctx.video_processor
-        if processor.total_reps > 0 or len(processor.error_log) > 0:
-            st.divider()
-            st.subheader("📊 Báo Cáo Buổi Tập")
+    # --- PHẦN KẾT QUẢ (HIỆN KHI DỪNG CAMERA) ---
+    st.markdown("---")
+    
+    # Tạo một vùng chứa kết quả để người dùng biết nó nằm ở đâu
+    result_container = st.container()
+    
+    with result_container:
+        if ctx.state.playing:
+            st.info("🔴 Đang tập luyện... Bấm 'STOP' (hoặc tắt Camera) để xem báo cáo chi tiết.")
+        
+        # Logic hiện báo cáo
+        if not ctx.state.playing and ctx.video_processor:
+            processor = ctx.video_processor
             
-            col_rep, col_score = st.columns(2)
-            
-            # 1. Số Reps
-            with col_rep:
-                st.metric(label="Tổng số lần tập (Reps)", value=processor.total_reps)
-            
-            # 2. Chấm điểm (Giả lập: Càng ít lỗi điểm càng cao)
-            with col_score:
-                error_count = len(processor.error_log)
-                score = max(0, 100 - (error_count * 5)) # Mỗi lỗi trừ 5 điểm
+            # Chỉ hiện nếu đã tập ít nhất 1 cái hoặc có lỗi (tránh hiện khi vừa vào web)
+            if processor.total_reps > 0 or len(processor.error_log) > 0:
+                st.subheader("📊 Kết Quả Buổi Tập Vừa Rồi")
                 
-                if score >= 80:
-                    grade = "Xuất sắc 🏆"
-                    color = "green"
-                elif score >= 50:
-                    grade = "Khá 👍"
-                    color = "orange"
-                else:
-                    grade = "Cần cố gắng ⚠️"
-                    color = "red"
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Tổng Reps", processor.total_reps)
+                with col2:
+                    error_count = len(processor.error_log)
+                    score = max(0, 100 - (error_count * 5))
                     
-                st.metric(label="Điểm Tư Thế", value=f"{score}/100", delta=grade)
+                    if score >= 80: grade, color = "Xuất sắc 🏆", "normal"
+                    elif score >= 50: grade, color = "Khá 👍", "off"
+                    else: grade, color = "Cần cố gắng ⚠️", "inverse"
+                    
+                    st.metric("Điểm Kỹ Thuật", f"{score}/100", grade)
 
-            # 3. Phân tích lỗi
-            if processor.error_log:
-                st.warning("🧐 Các vấn đề cần cải thiện:")
-                # Đếm số lần xuất hiện của từng lỗi
-                from collections import Counter
-                error_counts = Counter(processor.error_log)
-                
-                for err, count in error_counts.items():
-                    st.write(f"- **{err}**: Lặp lại {count} lần")
-            else:
-                st.success("🎉 Tuyệt vời! Bạn không mắc lỗi nào.")
+                if processor.error_log:
+                    st.warning("🧐 Các lỗi cần khắc phục:")
+                    from collections import Counter
+                    counts = Counter(processor.error_log)
+                    for err, c in counts.items():
+                        st.write(f"- {err}: {c} lần")
+                else:
+                    st.success("🎉 Bạn tập rất chuẩn! Không có lỗi nào.")
+            
+            # Nếu chưa tập gì cả (lần đầu vào web hoặc vừa F5)
+            elif processor.total_reps == 0:
+                st.caption("👈 Bấm START để bắt đầu tập luyện. Kết quả sẽ hiện ở đây.")
 
 if __name__ == "__main__":
     main()
