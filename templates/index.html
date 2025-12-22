@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Rehab AI - Trợ Lý Tập Luyện Ảo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #3b82f6;
+            --accent: #06b6d4;
+            --text-light: #f1f5f9;
+            --text-gray: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-light);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        header {
+            background-color: var(--card-bg);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+          -webkit-background-clip: text;
+            background-clip: text; 
+            
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        /* MAIN LAYOUT */
+        .main-container {
+            display: grid;
+            grid-template-columns: 3fr 1fr; /* Chia tỉ lệ: Camera 3 phần, Menu 1 phần */
+            gap: 20px;
+            padding: 20px;
+            flex: 1;
+            overflow: hidden; /* Tránh thanh cuộn nếu không cần thiết */
+        }
+
+        /* CỘT VIDEO (TRÁI) */
+        .video-section {
+            background-color: black;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            border: 2px solid #334155;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Giữ tỉ lệ ảnh không bị méo */
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 20px; right: 20px;
+            background-color: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        /* CỘT ĐIỀU KHIỂN (PHẢI) */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto; /* Cho phép cuộn nếu hướng dẫn dài */
+            padding-right: 5px;
+        }
+
+        /* Card chung */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+
+        .card h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 8px;
+        }
+
+        /* Nút bấm chọn bài */
+        .mode-btn {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-squat { background-color: #334155; color: white; border-left: 5px solid var(--accent); }
+        .btn-jj { background-color: #334155; color: white; border-left: 5px solid var(--success); }
+
+        .mode-btn:hover { transform: translateX(5px); filter: brightness(1.2); }
+        .mode-btn.active { background-color: var(--primary); border-left-color: white; }
+
+        /* Status hiện tại */
+        .status-box {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .status-label { font-size: 14px; color: var(--text-gray); }
+        .current-mode-display {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        /* Hướng dẫn */
+        .guide-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-light);
+        }
+        .guide-list li {
+            margin-bottom: 8px;
+            list-style-type: none;
+            position: relative;
+            padding-left: 20px;
+        }
+        .guide-list li::before {
+            content: "•";
+            color: var(--accent);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        .note {
+            font-size: 12px;
+            color: var(--text-gray);
+            font-style: italic;
+            margin-top: 10px;
+            background: rgba(0,0,0,0.2);
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        /* Animation */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 1000px) {
+            .main-container { grid-template-columns: 1fr; overflow-y: scroll; }
+            .video-section { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">🚀 OPAL VIRTUAL REHAB</div>
+        <div style="font-size: 14px; color: var(--text-gray);">AI Computer Vision System</div>
+    </header>
+
+    <div class="main-container">
+        
+        <div class="video-section">
+            <span class="live-badge">● LIVE CAMERA</span>
+            <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Đang tải video...">
+        </div>
+
+        <div class="control-panel">
+            
+            <div class="card">
+                <div class="status-box">
+                    <div class="status-label">CHẾ ĐỘ HIỆN TẠI</div>
+                    <div id="mode-text" class="current-mode-display">SQUAT</div>
+                </div>
+
+                <button class="mode-btn btn-squat active" id="btn-squat" onclick="switchMode('Squat')">
+                    <span>🏋️ Bài tập Squat</span>
+                    <span style="font-size:12px">Cơ đùi & Mông</span>
+                </button>
+                <button class="mode-btn btn-jj" id="btn-jj" onclick="switchMode('Jumping Jack')">
+                    <span>🏃 Jumping Jack</span>
+                    <span style="font-size:12px">Cardio</span>
+                </button>
+            </div>
+
+            <div class="card">
+                <h3>⚙️ Thiết lập Camera</h3>
+                <ul class="guide-list guide-text">
+                    <li>Đặt camera cách người <strong>2 - 3 mét</strong>.</li>
+                    <li>Đảm bảo <strong>ánh sáng tốt</strong>, không bị ngược sáng.</li>
+                    <li>Toàn bộ cơ thể (từ đầu đến chân) phải lọt vào khung hình.</li>
+                    <li>Mặc quần áo gọn gàng để AI bắt xương chuẩn nhất.</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>📖 Hướng dẫn tập</h3>
+                <div id="instruction-content" class="guide-text">
+                    <p><strong>Động tác Squat chuẩn:</strong></p>
+                    <ul class="guide-list">
+                        <li>Đứng thẳng, chân rộng bằng vai.</li>
+                        <li>Hạ mông xuống như đang ngồi ghế.</li>
+                        <li>Đùi song song với sàn (góc gối < 90 độ).</li>
+                        <li>Lưng giữ thẳng, không cong.</li>
+                    </ul>
+                </div>
+                <div class="note">⚠️ Hệ thống sẽ tự động đếm khi bạn thực hiện đúng biên độ (ROM).</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Nội dung hướng dẫn (Lưu vào biến để đổi cho nhanh)
+        const instructions = {
+            "Squat": `
+                <p><strong>Động tác Squat chuẩn:</strong></p>
+                <ul class="guide-list">
+                    <li>Đứng thẳng, chân rộng bằng vai.</li>
+                    <li>Hạ mông xuống (hít vào) đến khi đùi song song sàn.</li>
+                    <li>Đứng thẳng dậy (thở ra) về vị trí ban đầu.</li>
+                    <li>AI sẽ đếm khi bạn ngồi xuống đủ sâu (< 90 độ).</li>
+                </ul>`,
+            "Jumping Jack": `
+                <p><strong>Động tác Jumping Jack chuẩn:</strong></p>
+                <ul class="guide-list">
+                    <li>Bắt đầu: Đứng thẳng, tay khép sát thân.</li>
+                    <li>Bật nhảy: Chân dang rộng, tay vung lên cao qua đầu (hình chữ X).</li>
+                    <li>Tiếp đất: Trở về tư thế đứng nghiêm ban đầu.</li>
+                    <li>Cố gắng mở rộng biên độ tay và chân tối đa.</li>
+                </ul>`
+        };
+
+        function switchMode(modeName) {
+            // 1. Gửi request lên server Flask
+            fetch('/change_mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: modeName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    updateUI(modeName);
+                }
+            })
+            .catch(err => console.error("Lỗi:", err));
+        }
+
+        function updateUI(mode) {
+            // Cập nhật chữ to
+            document.getElementById('mode-text').innerText = mode.toUpperCase();
+
+            // Cập nhật nút active
+            document.getElementById('btn-squat').classList.remove('active');
+            document.getElementById('btn-jj').classList.remove('active');
+
+            if (mode === 'Squat') {
+                document.getElementById('btn-squat').classList.add('active');
+            } else {
+                document.getElementById('btn-jj').classList.add('active');
+            }
+
+            // Cập nhật hướng dẫn tương ứng
+            document.getElementById('instruction-content').innerHTML = instructions[mode];
+        }
+    </script>
+</body>
+</html>
