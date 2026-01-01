@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 # --- CẤU HÌNH NGƯỠNG (ĐIỀU CHỈNH ĐỘ KHẮT KHE) ---
 SIDE_NECK_THRESH = 50             # Góc cổ (Text Neck)
-SIDE_SHOULDER_ROUNDING_THRESH = 145 # Góc vai (Gù lưng/Vai cuộn)
+SIDE_SHOULDER_ROUNDING_THRESH = 165 # Góc vai (Gù lưng/Vai cuộn)
 FRONT_TILT_THRESH = 20            # Nghiêng đầu
 FRONT_OFFSET_Y = 30               # Khoảng cách cúi (Dí mắt)
 ALARM_DELAY = 3                   # Giây (Chờ 3s mới đếm lỗi)
@@ -55,7 +55,11 @@ if not os.path.exists(LOG_FILE):
 
 # --- HÀM TOÁN HỌC & AI ---
 def make_pose_detector():
-    return mp_pose.Pose(model_complexity=1, smooth_landmarks=True, min_detection_confidence=0.6, min_tracking_confidence=0.6, static_image_mode=False)
+    return mp_pose.Pose(model_complexity=1, 
+                        smooth_landmarks=True, 
+                        min_detection_confidence=0.6, 
+                        min_tracking_confidence=0.6, 
+                        static_image_mode=False)
 
 def find_angle(x1, y1, x2, y2):
     v1 = (x2-x1, y2-y1); v2 = (0, -1)
